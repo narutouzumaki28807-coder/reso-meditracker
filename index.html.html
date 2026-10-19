@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RESO</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#eef4f8;color:#1d2b36}
+header{background:#0e6b8c;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+header h1{margin:0;font-size:22px;letter-spacing:3px}
+header span{font-size:14px;opacity:.85}
+main{max-width:720px;margin:0 auto;padding:16px}
+.card{background:#fff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.card h2{margin:0 0 12px;font-size:18px;color:#0e6b8c}
+.btn{display:block;width:100%;padding:18px;font-size:18px;border:none;border-radius:12px;background:#0e6b8c;color:#fff;cursor:pointer;margin:10px 0}
+.btn:hover{background:#0b5570}
+.btn.small{display:inline-block;width:auto;padding:8px 14px;font-size:14px;margin:0}
+.btn.alt{background:#6b7b86}
+.btn.alt:hover{background:#56646d}
+.btn.ok{background:#2e8b57}
+.btn.ok:hover{background:#246e45}
+.btn.danger{background:#b23b3b}
+input,select{width:100%;padding:14px;font-size:16px;border:1px solid #b8c7d1;border-radius:10px;margin:6px 0 12px;background:#fff}
+label{font-weight:600;font-size:14px}
+.error{color:#b23b3b;font-weight:600;margin:6px 0}
+.ok-msg{color:#2e8b57;font-weight:600;margin:6px 0}
+.hint{color:#5a6b76;font-size:14px}
+.bar{background:#dde7ed;border-radius:10px;height:18px;overflow:hidden}
+.bar div{background:#2e8b57;height:100%}
+.step{padding:10px 0;border-bottom:1px solid #eef2f5;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.done{color:#2e8b57;font-weight:600}
+.pending{color:#b7791f;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.room{padding:18px 8px;text-align:center;border-radius:10px;background:#f2f6f9;border:2px solid transparent;font-size:14px;font-weight:600}
+.room.here{background:#fff3cd;border-color:#e0a800}
+.med{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #eef2f5;gap:10px;flex-wrap:wrap}
+.tag{display:inline-block;padding:4px 10px;border-radius:20px;font-size:13px;font-weight:600;background:#e6f2ec;color:#2e8b57}
+.tag.pend{background:#fdf1dc;color:#b7791f}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.tabs button{flex:1;padding:12px;border:none;border-radius:10px;background:#dde7ed;font-size:15px;cursor:pointer;font-weight:600}
+.tabs button.active{background:#0e6b8c;color:#fff}
+.chip{display:inline-block;background:#e6f2ec;padding:8px 12px;border-radius:8px;margin:4px;cursor:pointer;font-size:14px;color:#1d2b36;border:none}
+.checkout{background:#263238;color:#fff}
+.checkout h2{color:#7fd1ea}
+.checkout input{color:#000}
+.slot{display:inline-flex;align-items:center;gap:6px;margin:8px 14px 0 0;font-weight:400;font-size:16px}
+.slot input{width:auto;margin:0}
+@media (max-width:480px){.grid{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>RESO</h1><span>Hospital prototype</span></header>
+<main id="app"></main>
+
+<script>
+const ROOMS = ["Reception","Pharmacy","Lab","Cardiology","Ward 2","Radiology"];
+const MEDICINES = ["Paracetamol 500mg","Amoxicillin 500mg","Metformin 500mg","Amlodipine 5mg","Ibuprofen 400mg","Atorvastatin 10mg","Omeprazole 20mg","Cetirizine 10mg"];
+const DOCTOR = { username:"doctor1", password:"pass123", name:"Dr. Meera Iyer" };
+const SLOTS = { 1:["8:00 AM"], 2:["8:00 AM","9:00 PM"], 3:["8:00 AM","2:00 PM","9:00 PM"], 4:["8:00 AM","12:00 PM","4:00 PM","9:00 PM"] };
+
+let rxCounter = 10;
+const db = {
+  patients: {
+    "PT-1001": {
+      name:"Ravi Kumar", age:54,
+      vitals:{ bp:"138/88", sugar:"156 mg/dL", temp:"37.2 °C" },
+      notes:"Hypertension and mild diabetes. Follow a low-salt diet.",
+      history:["Mar 2026: Routine check-up","Jul 2026: Blood sugar test"],
+      steps:[{label:"Registration",done:true},{label:"Lab tests",done:true},{label:"Consultation",done:true},{label:"Medicine collected",done:false},{label:"Follow-up visit",done:false}],
+      appointments:[{date:"2026-10-26",time:"10:30",doctor:DOCTOR.name,room:"Cardiology"}],
+      nextRoom:"Pharmacy",
+      prescriptions:[
+        {id:1,medicine:"Metformin 500mg",dose:"1 tablet",times:2,duration:7,status:"Pending",taken:{}},
+        {id:2,medicine:"Amlodipine 5mg",dose:"1 tablet",times:1,duration:30,status:"Pending",taken:{}}
+      ]
+    },
+    "PT-1002": {
+      name:"Anita Shah", age:31,
+      vitals:{ bp:"118/76", sugar:"92 mg/dL", temp:"38.4 °C" },
+      notes:"Bacterial throat infection. Complete the full antibiotic course.",
+      history:["Oct 2026: Fever and sore throat"],
+      steps:[{label:"Registration",done:true},{label:"Lab tests",done:false},{label:"Consultation",done:false},{label:"Medicine collected",done:false},{label:"Follow-up visit",done:false}],
+      appointments:[],
+      nextRoom:"Lab",
+      prescriptions:[
+        {id:3,medicine:"Amoxicillin 500mg",dose:"1 capsule",times:3,duration:5,status:"Pending",taken:{}},
+        {id:4,medicine:"Paracetamol 500mg",dose:"1 tablet",times:3,duration:3,status:"Given",taken:{}}
+      ]
+    }
+  }
+};
+
+let S = { screen:"home", err:"", ok:"", pid:null, lookupId:null, tab:"lookup" };
+
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function notice(){ return S.err ? `<p class="error">${esc(S.err)}</p>` : S.ok ? `<p class="ok-msg">${esc(S.ok)}</p>` : ""; }
+function patientOptions(){ return Object.entries(db.patients).map(([id,p]) => `<option value="${id}">${id} – ${esc(p.name)}</option>`).join(""); }
+
+function go(screen, extra){ Object.assign(S, {screen, err:"", ok:""}, extra || {}); render(); }
+function setTab(t){ S.tab = t; S.err = ""; S.ok = ""; render(); }
+function render(){
+  const views = { home, pScan, pDash, dLogin, dHome, phScan, phList };
+  document.getElementById("app").innerHTML = views[S.screen]();
+}
+
+/* ---------- HOME ---------- */
+function home(){
+  return `<div class="card"><h2>Welcome</h2><p class="hint">Select your role to continue.</p>
+    <button class="btn" onclick="go('pScan')">Patient</button>
+    <button class="btn" onclick="go('dLogin')">Doctor</button>
+    <button class="btn" onclick="go('phScan')">Pharmacist</button></div>`;
+}
+
+/* ---------- PATIENT ---------- */
+function pScan(){
+  return `<div class="card"><h2>Scan barcode</h2>
+    <label for="pb">Patient barcode</label>
+    <input id="pb" placeholder="Scan or type patient barcode">
+    <button class="btn" onclick="patientScan()">Scan</button>
+    ${notice()}
+    <p class="hint">Demo barcodes (tap to fill):</p>
+    ${Object.entries(db.patients).map(([id,p]) => `<button class="chip" onclick="document.getElementById('pb').value='${id}'">${id} (${esc(p.name)})</button>`).join("")}
+    </div>
+    <button class="btn alt" onclick="go('home')">← Back to home</button>`;
+}
+function patientScan(){
+  const id = document.getElementById("pb").value.trim().toUpperCase();
+  if(!db.patients[id]){ S.err = "Barcode not found. Try PT-1001 or PT-1002."; S.ok = ""; render(); return; }
+  go("pDash", {pid:id});
+}
+function pDash(){
+  const p = db.patients[S.pid];
+  const doneCount = p.steps.filter(s => s.done).length;
+  const pct = Math.round(doneCount / p.steps.length * 100);
+  const appts = [...p.appointments].sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+  const next = appts[0];
+  const pending = p.prescriptions.filter(r => r.status === "Pending").length;
+  return `
+    <div class="card"><h2>Hello, ${esc(p.name)}</h2><p class="hint">Barcode ${S.pid}</p></div>
+    <div class="card"><h2>Health progress</h2>
+      <div class="bar"><div style="width:${pct}%"></div></div>
+      <p class="hint">${pct}% complete</p>
+      ${p.steps.map(s => `<div class="step"><span>${esc(s.label)}</span><span class="${s.done?'done':'pending'}">${s.done?'Done':'Pending'}</span></div>`).join("")}
+    </div>
+    <div class="card"><h2>Hospital map</h2>
+      <div class="grid">${ROOMS.map(r => `<div class="room ${r===p.nextRoom?'here':''}">${r}${r===p.nextRoom?'<br><small>Go here next</small>':''}</div>`).join("")}</div>
+    </div>
+    <div class="card"><h2>Medicines to take</h2>
+      ${p.prescriptions.length ? p.prescriptions.map(medRow).join("") : '<p class="hint">No medicines prescribed yet.</p>'}
+    </div>
+    <div class="card"><h2>Next appointment</h2>
+      ${next ? `<p><b>Date:</b> ${esc(next.date)}<br><b>Time:</b> ${esc(next.time)}<br><b>Doctor:</b> ${esc(next.doctor)}<br><b>Room:</b> ${esc(next.room)}</p>` : '<p class="hint">No appointment scheduled.</p>'}
+    </div>
+    <div class="card"><h2>Collect medicine at</h2>
+      <p><b>Pharmacy counter</b><br><span class="hint">${pending} medicine(s) waiting for you</span></p>
+    </div>
+    <button class="btn alt" onclick="go('home')">← Back to home</button>`;
+}
+function medRow(rx){
+  const slots = SLOTS[rx.times];
+  return `<div class="card" style="box-shadow:none;border:1px solid #dde7ed;margin-bottom:12px">
+    <b>${esc(rx.medicine)}</b> — ${esc(rx.dose)}<br>
+    <span class="hint">${rx.times} time(s) a day, for ${rx.duration} day(s)</span><br>
+    ${slots.map(sl => `<label class="slot"><input type="checkbox" ${rx.taken[sl]?'checked':''} onchange="toggleTaken(${rx.id},'${sl}',this.checked)"> ${sl}</label>`).join("")}
+    <br><span class="tag ${rx.status==='Given'?'':'pend'}">${rx.status==='Given'?'Given at pharmacy':'Waiting at pharmacy'}</span>
+  </div>`;
+}
+function toggleTaken(rxId, slot, checked){
+  const rx = db.patients[S.pid].prescriptions.find(r => r.id === rxId);
+  rx.taken[slot] = checked;
+  render();
+}
+
+/* ---------- DOCTOR ---------- */
+function dLogin(){
+  return `<div class="card"><h2>Doctor login</h2>
+    <label for="du">Username</label><input id="du" autocomplete="username">
+    <label for="dp">Password</label><input id="dp" type="password" autocomplete="current-password">
+    ${S.err ? `<p class="error">${esc(S.err)}</p>` : ""}
+    <button class="btn" onclick="doctorLogin()">Login</button>
+    <p class="hint">Demo account: doctor1 / pass123</p></div>
+    <button class="btn alt" onclick="go('home')">← Back to home</button>`;
+}
+function doctorLogin(){
+  const u = document.getElementById("du").value.trim();
+  const p = document.getElementById("dp").value;
+  if(u !== DOCTOR.username || p !== DOCTOR.password){ S.err = "Wrong username or password."; S.ok = ""; render(); return; }
+  go("dHome", {tab:"lookup", lookupId:null});
+}
+function dHome(){
+  const tabs = [["lookup","Patient lookup"],["appt","Appointments"],["rx","Prescriptions"]];
+  const body = S.tab === "lookup" ? lookupView() : S.tab === "appt" ? apptView() : rxView();
+  return `<div class="card"><h2>${esc(DOCTOR.name)}</h2>
+      <button class="btn danger small" onclick="go('home',{lookupId:null})">Logout</button></div>
+    <div class="tabs">${tabs.map(([k,l]) => `<button class="${S.tab===k?'active':''}" onclick="setTab('${k}')">${l}</button>`).join("")}</div>
+    ${body}`;
+}
+
+/* Patient lookup */
+function lookupView(){
+  const p = S.lookupId ? db.patients[S.lookupId] : null;
+  return `<div class="card"><h2>Patient lookup</h2>
+      <label for="lb">Patient barcode</label>
+      <input id="lb" placeholder="e.g. PT-1001">
+      <button class="btn" onclick="lookup()">Open record</button>
+      ${S.err ? `<p class="error">${esc(S.err)}</p>` : ""}
+    </div>
+    ${p ? `<div class="card"><h2>${esc(p.name)} (${S.lookupId}, age ${p.age})</h2>
+      <p><b>BP:</b> ${esc(p.vitals.bp)} &nbsp; <b>Sugar:</b> ${esc(p.vitals.sugar)} &nbsp; <b>Temp:</b> ${esc(p.vitals.temp)}</p>
+      <p><b>Doctor's notes:</b> ${esc(p.notes)}</p>
+      <p><b>History:</b></p><ul>${p.history.map(h => `<li>${esc(h)}</li>`).join("")}</ul>
+      <h2 style="margin-top:14px">Treatment steps</h2>
+      ${p.steps.map((s,i) => `<div class="step"><span>${esc(s.label)}</span>
+        <button class="btn small ${s.done?'alt':'ok'}" onclick="toggleStep(${i})">${s.done?'Mark pending':'Mark done'}</button></div>`).join("")}
+      ${notice()}
+    </div>` : ""}`;
+}
+function lookup(){
+  const id = document.getElementById("lb").value.trim().toUpperCase();
+  S.ok = "";
+  if(!db.patients[id]){ S.err = "No patient with that barcode."; S.lookupId = null; }
+  else { S.err = ""; S.lookupId = id; }
+  render();
+}
+function toggleStep(i){
+  const s = db.patients[S.lookupId].steps[i];
+  s.done = !s.done;
+  S.ok = `"${s.label}" updated for the patient.`; S.err = "";
+  render();
+}
+
+/* Appointments */
+function apptView(){
+  const rooms = ROOMS.map(r => `<option ${r==='Cardiology'?'selected':''}>${r}</option>`).join("");
+  return `<div class="card"><h2>Book appointment</h2>
+      <label for="ap">Patient</label><select id="ap">${patientOptions()}</select>
+      <div class="row">
+        <div><label for="ad">Date</label><input id="ad" type="date"></div>
+        <div><label for="at">Time</label><input id="at" type="time"></div>
+      </div>
+      <label for="ar">Room</label><select id="ar">${rooms}</select>
+      <button class="btn ok" onclick="saveAppt()">Save appointment</button>
+      ${notice()}
+    </div>
+    <div class="card"><h2>All appointments</h2>${allAppts()}</div>`;
+}
+function saveAppt(){
+  const pid = document.getElementById("ap").value;
+  const d = document.getElementById("ad").value;
+  const t = document.getElementById("at").value;
+  const room = document.getElementById("ar").value;
+  if(!d || !t){ S.err = "Please pick a date and time."; S.ok = ""; render(); return; }
+  const p = db.patients[pid];
+  p.appointments.push({date:d, time:t, doctor:DOCTOR.name, room});
+  S.err = ""; S.ok = `Appointment saved for ${p.name}.`;
+  render();
+}
+function allAppts(){
+  const list = [];
+  Object.entries(db.patients).forEach(([id,p]) => p.appointments.forEach(a => list.push({...a, name:p.name})));
+  list.sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+  return list.length
+    ? list.map(a => `<div class="step"><span>${esc(a.date)} ${esc(a.time)} – ${esc(a.name)}</span><span class="hint">${esc(a.room)}</span></div>`).join("")
+    : '<p class="hint">None yet.</p>';
+}
+
+/* Prescriptions */
+function rxView(){
+  const meds = MEDICINES.map(m => `<option>${m}</option>`).join("");
+  return `<div class="card"><h2>New prescription</h2>
+      <label for="rxPatient">Patient</label><select id="rxPatient">${patientOptions()}</select>
+      <label for="rxMed">Medicine</label><select id="rxMed">${meds}</select>
+      <label for="rxDose">Dose (e.g. 1 tablet)</label><input id="rxDose" value="1 tablet">
+      <div class="row">
+        <div><label for="rxTimes">Times per day (1–4)</label><input id="rxTimes" type="number" min="1" max="4" value="2"></div>
+        <div><label for="rxDays">Duration (days)</label><input id="rxDays" type="number" min="1" value="7"></div>
+      </div>
+      <button class="btn ok" onclick="savePrescription()">Save prescription</button>
+      ${notice()}
+    </div>
+    <div class="card"><h2>Pharmacy queue</h2>${pharmQueue()}</div>`;
+}
+function savePrescription(){
+  const pid = document.getElementById("rxPatient").value;
+  const med = document.getElementById("rxMed").value;
+  const dose = document.getElementById("rxDose").value.trim();
+  const times = parseInt(document.getElementById("rxTimes").value, 10);
+  const days = parseInt(document.getElementById("rxDays").value, 10);
+  if(!dose || !(times >= 1 && times <= 4) || !(days >= 1)){
+    S.err = "Check the dose, times per day (1–4) and duration."; S.ok = ""; render(); return;
+  }
+  const p = db.patients[pid];
+  p.prescriptions.push({id:++rxCounter, medicine:med, dose, times, duration:days, status:"Pending", taken:{}});
+  S.err = ""; S.ok = `Prescription saved for ${p.name}.`;
+  render();
+}
+function pharmQueue(){
+  const items = [];
+  Object.entries(db.patients).forEach(([id,p]) =>
+    p.prescriptions.filter(r => r.status === "Pending").forEach(r => items.push({name:p.name, r})));
+  return items.length
+    ? items.map(i => `<div class="step"><span>${esc(i.name)} – ${esc(i.r.medicine)}</span><span class="pending">Pending</span></div>`).join("")
+    : '<p class="hint">No pending prescriptions.</p>';
+}
+
+/* ---------- PHARMACIST ---------- */
+function phScan(){
+  return `<div class="card checkout"><h2>Pharmacy checkout</h2>
+      <p class="hint" style="color:#cfd8dc">Scan the patient's barcode to see their medicines.</p>
+      <label for="phb" style="color:#fff">Patient barcode</label>
+      <input id="phb" placeholder="Scan or type patient barcode">
+      <button class="btn ok" onclick="phScanGo()">Scan</button>
+      ${S.err ? `<p class="error" style="color:#ff8a80">${esc(S.err)}</p>` : ""}
+    </div>
+    <button class="btn alt" onclick="go('home')">← Back to home</button>`;
+}
+function phScanGo(){
+  const id = document.getElementById("phb").value.trim().toUpperCase();
+  if(!db.patients[id]){ S.err = "Barcode not found."; S.ok = ""; render(); return; }
+  go("phList", {pid:id});
+}
+function phList(){
+  const p = db.patients[S.pid];
+  return `<div class="card"><h2>${esc(p.name)} – ${S.pid}</h2>
+      ${p.prescriptions.length
+        ? p.prescriptions.map(r => `<div class="med">
+            <div><b>${esc(r.medicine)}</b><br>
+            <span class="hint">Dose: ${esc(r.dose)} · Quantity: ${r.times * r.duration}</span></div>
+            ${r.status === "Pending"
+              ? `<button class="btn ok small" onclick="markGiven(${r.id})">Mark as given to patient</button>`
+              : `<span class="tag">Given</span>`}
+          </div>`).join("")
+        : '<p class="hint">No prescriptions for this patient.</p>'}
+      ${notice()}
+    </div>
+    <button class="btn alt" onclick="go('home')">← Back to home</button>`;
+}
+function markGiven(rxId){
+  const p = db.patients[S.pid];
+  const rx = p.prescriptions.find(r => r.id === rxId);
+  rx.status = "Given";
+  if(p.prescriptions.every(r => r.status === "Given")){
+    const step = p.steps.find(s => s.label === "Medicine collected");
+    if(step) step.done = true;
+  }
+  S.err = ""; S.ok = `${rx.medicine} marked as given.`;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
